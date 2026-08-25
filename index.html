@@ -48,7 +48,8 @@
   .scard .name{font-weight:700;font-size:15px}
   .pill{font-size:11px;padding:2px 9px;border-radius:20px;background:var(--chip);color:var(--sub);margin-left:6px}
   .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;color:#fff;font-weight:600}
-  .stars{font-size:18px;letter-spacing:2px;margin:12px 0 6px}
+  .stars{font-size:20px;letter-spacing:3px;margin:12px 0 4px}
+  .stars span{transition:color .1s}
   .score{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
   .score .v{font-size:22px;font-weight:700}
   .score .u{font-size:12px;color:var(--sub)}
@@ -103,7 +104,7 @@
 
   <section id="dash" class="show">
     <div class="bar">
-      <h2 class="sec">预警看板（风险分从高到低）</h2>
+      <h2 class="sec">预警看板（按风险分从高到低）</h2>
       <div>
         <button class="btn ghost tiny" id="onlyWarn">只看预警及以上</button>
         <button class="btn ghost tiny" id="expCsv">导出看板CSV</button>
@@ -147,12 +148,13 @@
 
   <section id="help" class="help">
     <h2 class="sec">使用说明</h2>
-    <p><b>1. 它是干嘛的</b>：把每天谁没来、请没请假、迟不迟到、宿管/课堂有没有事记下来，系统自动算每个人的「风险分」和「星级🌟」，严重的自动飘红预警。</p>
-    <p><b>2. 风险分怎么算</b>：未请假缺勤 ×3 ＋ 请假缺勤 ×1 ＋ 迟到 ×1.5 ＋ 夜不归宿/宿舍问题 ×4 ＋ 课堂扰乱 ×4 ＝ 风险分。星级 = 每满 5 分 +1🌟，最多 10。</p>
-    <p><b>3. 等级</b>：0~1🌟 正常 · 2~3🌟 关注 · 4~5🌟 预警 · 6~8🌟 高风险 · 9~10🌟 危险（需立即介入）。</p>
-    <p><b>4. 数据在哪</b>：全部存在你这台电脑的浏览器里（localStorage），不上传、不联网。换电脑/清缓存会丢，重要数据用「导出看板CSV」备份。</p>
-    <p><b>5. 典型用法</b>：每天点「考勤录入」记一下 → 看「预警看板」谁飘红 → 找飘红学生聊。已预置 5 名示例学员，可直接改/删。</p>
-    <p><b>6. 外观</b>：右上角可切换「深色 / 浅色」主题，偏好会自动记住。</p>
+    <p><b>1. 它是干嘛的</b>：把每天谁没来、请没请假、迟不迟到、宿管/课堂有没有事记下来，系统算「风险分」作参考。</p>
+    <p><b>2. 风险分怎么算</b>：未请假缺勤 ×3 ＋ 请假缺勤 ×1 ＋ 迟到 ×1.5 ＋ 夜不归宿/宿舍问题 ×4 ＋ 课堂扰乱 ×4 ＝ 风险分。</p>
+    <p><b>3. 评级主动权在你手里</b>：星级改为 <b>5 颗星</b>。看板上<b>直接点星星</b>就能给每个学生的危险等级定级（1★低 → 5★危险·需介入），系统只显示「建议星级」作参考，最终等级和颜色由你点选决定。</p>
+    <p><b>4. 等级对应</b>：1★低 · 2★关注 · 3★预警 · 4★高风险 · 5★危险（需立即介入）· 0★未评级。</p>
+    <p><b>5. 数据在哪</b>：全部存在你这台电脑的浏览器里（localStorage），不上传、不联网。换电脑/清缓存会丢，重要数据用「导出看板CSV」备份。</p>
+    <p><b>6. 典型用法</b>：每天点「考勤录入」记一下 → 看「预警看板」谁飘红 → <b>点星星定级</b> → 找飘红学生聊。已预置 5 名示例学员（含建议星级），可直接改/删。</p>
+    <p><b>7. 外观</b>：右上角可切换「深色 / 浅色」主题，偏好会自动记住。</p>
   </section>
 </div>
 
@@ -161,16 +163,23 @@ const KEY="attendance-warning-v1", THEME_KEY="attendance-warning-theme";
 const WEIGHT={unex:3,exc:1,late:1.5,dorm:4,disr:4};
 const TYPE_LABEL={unex:"未请假缺勤",exc:"请假缺勤",late:"迟到",dorm:"宿舍/夜不归宿",disr:"课堂扰乱"};
 const LEVEL=[
-  {min:0,cls:"b0",name:"正常",color:"#9aa0a6"},
-  {min:2,cls:"b1",name:"关注",color:"#16a34a"},
-  {min:4,cls:"b2",name:"预警",color:"#2563eb"},
-  {min:6,cls:"b3",name:"高风险",color:"#ea580c"},
-  {min:9,cls:"b5",name:"危险·需介入",color:"#dc2626"}
+  {min:0,cls:"b0",name:"未评级",color:"#9aa0a6"},
+  {min:1,cls:"b1",name:"低",color:"#16a34a"},
+  {min:2,cls:"b2",name:"关注",color:"#2563eb"},
+  {min:3,cls:"b3",name:"预警",color:"#d97706"},
+  {min:4,cls:"b4",name:"高风险",color:"#ea580c"},
+  {min:5,cls:"b5",name:"危险·需介入",color:"#dc2626"}
 ];
 let state={students:[],records:[]};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
-function load(){try{const s=localStorage.getItem(KEY);if(s){state=JSON.parse(s);return}}catch(e){}seed();}
+function load(){
+  try{const s=localStorage.getItem(KEY);if(s){state=JSON.parse(s);migrate();return}}catch(e){}
+  seed();
+}
+function migrate(){
+  state.students.forEach(st=>{ if(st.manualStars===undefined) st.manualStars=suggestedStars(scoreOf(st.id)); });
+}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));document.getElementById("saveTip").textContent="已自动保存 "+new Date().toLocaleTimeString();}catch(e){}}
 
 function seed(){
@@ -184,36 +193,42 @@ function seed(){
   const today=new Date();
   base.forEach(b=>{
     const sid=uid();
-    state.students.push({id:sid,name:b.name,type:b.type,note:b.note});
+    state.students.push({id:sid,name:b.name,type:b.type,note:b.note,manualStars:0});
     let day=0;
     const push=(type,c)=>{for(let i=0;i<c;i++){const d=new Date(today);d.setDate(d.getDate()-day);day+=1;
       state.records.push({id:uid(),sid,date:d.toISOString().slice(0,10),type,note:""});}};
     push("unex",b.unex);push("late",b.late);push("exc",b.exc);push("dorm",b.dorm);push("disr",b.disr);
   });
+  state.students.forEach(st=>st.manualStars=suggestedStars(scoreOf(st.id)));
   save();
 }
 function scoreOf(sid){let s=0;state.records.forEach(r=>{if(r.sid===sid)s+=WEIGHT[r.type]||0});return Math.round(s*10)/10;}
-function starsOf(score){return Math.min(10,Math.max(0,Math.ceil(score/5)))}
+function suggestedStars(s){ if(s<=0)return 0; if(s<5)return 1; if(s<15)return 2; if(s<30)return 3; if(s<50)return 4; return 5; }
 function levelOf(n){let lv=LEVEL[0];for(const l of LEVEL){if(n>=l.min)lv=l}return lv}
-function starStr(n){return "★".repeat(n)+"☆".repeat(10-n)}
+function starRow(sid,n,color){
+  let h='';
+  for(let i=1;i<=5;i++){ h+=`<span style="cursor:pointer;color:${i<=n?color:'var(--line)'}" title="设为${i}星" onclick="setStars('${sid}',${i})">★</span>`; }
+  return h;
+}
+function setStars(sid,v){const st=state.students.find(x=>x.id===sid);if(st){st.manualStars=v;save();renderAll();}}
 
 function renderStats(){
   const total=state.students.length;let warn=0,high=0,danger=0;
-  state.students.forEach(st=>{const n=starsOf(scoreOf(st.id));if(n>=4)warn++;if(n>=6)high++;if(n>=9)danger++});
+  state.students.forEach(st=>{const n=st.manualStars||0;if(n>=3)warn++;if(n>=4)high++;if(n>=5)danger++;});
   document.getElementById("stats").innerHTML=`
     <div class="stat"><div class="n">${total}</div><div class="l">在册学生</div></div>
-    <div class="stat warn"><div class="n">${warn}</div><div class="l">预警及以上</div></div>
-    <div class="stat danger"><div class="n">${high}</div><div class="l">高风险(6🌟+)</div></div>
-    <div class="stat danger"><div class="n">${danger}</div><div class="l">危险(9🌟+)</div></div>`;
+    <div class="stat warn"><div class="n">${warn}</div><div class="l">预警及以上(3★+)</div></div>
+    <div class="stat danger"><div class="n">${high}</div><div class="l">高风险(4★+)</div></div>
+    <div class="stat danger"><div class="n">${danger}</div><div class="l">危险(5★)</div></div>`;
 }
 let onlyWarn=false;
 function renderDash(){
   const body=document.getElementById("dashBody");
   let list=state.students.map(st=>({st,score:scoreOf(st.id)})).sort((a,b)=>b.score-a.score);
-  if(onlyWarn)list=list.filter(x=>starsOf(x.score)>=4);
+  if(onlyWarn)list=list.filter(x=>(x.st.manualStars||0)>=3);
   if(!list.length){body.innerHTML='<div class="empty">暂无学生，去「学生管理」添加</div>';return}
   body.innerHTML=list.map(({st,score})=>{
-    const n=starsOf(score),lv=levelOf(n);
+    const n=st.manualStars||0,lv=levelOf(n),sug=suggestedStars(score);
     const recs=state.records.filter(r=>r.sid===st.id).sort((a,b)=>b.date.localeCompare(a.date));
     const last=recs[0];const lastTxt=last?`${last.date} ${TYPE_LABEL[last.type]}${last.note?(" · "+last.note):""}`:"无记录";
     const pct=Math.min(100,Math.round(score/60*100));
@@ -222,12 +237,13 @@ function renderDash(){
       <div class="top">
         <div class="avatar" style="background:${lv.color}">${ini}</div>
         <div><div class="name">${st.name}<span class="pill">${st.type}</span></div></div>
-        <span class="badge" style="background:${lv.color};margin-left:auto">${n}🌟 ${lv.name}</span>
+        <span class="badge" style="background:${lv.color};margin-left:auto">${n}★ ${lv.name}</span>
       </div>
-      <div class="stars" style="color:${lv.color}">${starStr(n)}</div>
+      <div class="stars">${starRow(st.id,n,lv.color)}</div>
       <div class="score"><span class="v" style="color:${lv.color}">${score}</span><span class="u">风险分</span></div>
       <div class="track"><div class="fill" style="width:${pct}%;background:${lv.color}"></div></div>
       <div class="note" title="${lastTxt}">${st.note?("📝 "+st.note):lastTxt}</div>
+      <div class="note-txt">系统建议 ${sug}★ · 点星星手动定级</div>
       <div class="acts">
         <button class="btn ghost tiny" onclick="showDetail('${st.id}')">明细</button>
         <button class="btn ghost tiny" onclick="delStu('${st.id}')">删除</button>
@@ -237,10 +253,13 @@ function renderDash(){
 }
 function showDetail(sid){
   const st=state.students.find(s=>s.id===sid);if(!st)return;
+  const lv=levelOf(st.manualStars||0);
   const recs=state.records.filter(r=>r.sid===sid).sort((a,b)=>b.date.localeCompare(a.date));
   const rows=recs.length?recs.map(r=>`<tr><td>${r.date}</td><td>${TYPE_LABEL[r.type]}</td><td>${r.note||"-"}</td></tr>`).join(""):'<tr><td colspan="3" class="empty">无记录</td></tr>';
   document.body.insertAdjacentHTML("beforeend",`<div class="modal" onclick="this.remove()"><div class="box" onclick="event.stopPropagation()">
-    <h2 class="sec">${st.name}（${st.type}）· 风险分 ${scoreOf(sid)} · ${starsOf(scoreOf(sid))}🌟</h2>
+    <h2 class="sec">${st.name}（${st.type}）</h2>
+    <p class="note-txt">风险分 <b>${scoreOf(sid)}</b> · 当前评级 <b>${st.manualStars||0}★ ${lv.name}</b></p>
+    <div class="stars" style="margin:6px 0 14px">${starRow(sid,st.manualStars||0,lv.color)}</div>
     <p class="note-txt" style="margin-bottom:12px">${st.note||"无备注"}</p>
     <table><thead><tr><th>日期</th><th>类型</th><th>备注</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="bar" style="margin-top:16px"><button class="btn" onclick="this.closest('.modal').remove()">关闭</button></div>
@@ -251,9 +270,10 @@ function renderStu(){
   const list=document.getElementById("stuList");
   if(!state.students.length){list.innerHTML='<div class="empty">还没有学生</div>';return}
   list.innerHTML='<table><thead><tr><th>姓名</th><th>类型</th><th>备注</th><th>事件数</th><th>操作</th></tr></thead><tbody>'+state.students.map(st=>{
-    const c=state.records.filter(r=>r.sid===st.id).length;
+    const c=state.records.filter(r=>r.sid===st.id).length;const lv=levelOf(st.manualStars||0);
     return `<tr><td><b>${st.name}</b></td><td>${st.type}</td><td class="note-txt">${st.note||"-"}</td><td>${c}</td>
-      <td><button class="btn ghost tiny" onclick="editStu('${st.id}')">改</button>
+      <td><span class="badge" style="background:${lv.color}">${st.manualStars||0}★ ${lv.name}</span>
+          <button class="btn ghost tiny" onclick="editStu('${st.id}')">改</button>
           <button class="btn ghost tiny" onclick="delStu('${st.id}')">删</button></td></tr>`;
   }).join("")+'</tbody></table>';
 }
@@ -284,7 +304,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
 });
 document.getElementById("stuAdd").onclick=()=>{
   const name=document.getElementById("stuName").value.trim();if(!name){alert("请输入姓名");return;}
-  state.students.push({id:uid(),name,type:document.getElementById("stuType").value,note:document.getElementById("stuNote").value.trim()});
+  state.students.push({id:uid(),name,type:document.getElementById("stuType").value,note:document.getElementById("stuNote").value.trim(),manualStars:0});
   document.getElementById("stuName").value="";document.getElementById("stuNote").value="";save();renderAll();
 };
 document.getElementById("logAdd").onclick=()=>{
@@ -295,9 +315,9 @@ document.getElementById("logAdd").onclick=()=>{
 };
 document.getElementById("onlyWarn").onclick=()=>{onlyWarn=!onlyWarn;renderDash();};
 document.getElementById("expCsv").onclick=()=>{
-  let csv="姓名,类型,风险分,星级,等级,备注\n";
+  let csv="姓名,类型,风险分,手动星级,等级,备注\n";
   state.students.map(st=>({st,score:scoreOf(st.id)})).sort((a,b)=>b.score-a.score).forEach(({st,score})=>{
-    const n=starsOf(score),lv=levelOf(n);
+    const n=st.manualStars||0,lv=levelOf(n);
     csv+=`${st.name},${st.type},${score},${n},${lv.name},"${(st.note||"").replace(/"/g,'""')}"\n`;
   });
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download="学生预警看板.csv";a.click();
