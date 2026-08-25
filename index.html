@@ -158,9 +158,31 @@
       </div>
       <div class="fld"><label>备注</label><input type="text" id="stuNote" placeholder="如：几乎不来 / 常请假"></div>
       <button class="btn" id="stuAdd">添加学生</button>
+      <button class="btn ghost" id="bulkBtn">批量导入</button>
     </div>
     <div id="stuList"></div>
   </section>
+
+  <!-- 批量导入弹窗 -->
+  <div id="bulkModal" class="modal" style="display:none">
+    <div class="box">
+      <h2 class="sec">批量导入学生</h2>
+      <p class="note-txt">方式一：在下方粘贴，<b>每行一个学生</b>。可用逗号或制表符分隔「姓名,类型,备注」，类型省略默认住校；也可每行只写姓名。<br>
+      方式二：直接选择 CSV / TXT 文件（从 Excel 复制出来另存为 .csv 也行）。</p>
+      <textarea id="bulkText" rows="9" style="width:100%" placeholder="张三&#10;李四,走读&#10;王五,住校,常请假"></textarea>
+      <div class="bar" style="margin:10px 0">
+        <label class="btn ghost tiny" style="cursor:pointer">选择文件
+          <input id="bulkFile" type="file" accept=".csv,.txt" style="display:none">
+        </label>
+        <span id="bulkCount" class="note-txt" style="margin:0"></span>
+      </div>
+      <div id="bulkErr" style="color:var(--red);font-size:12px;min-height:16px"></div>
+      <div class="bar" style="margin-top:8px">
+        <button class="btn" id="bulkDo">导入</button>
+        <button class="btn ghost" id="bulkClose">关闭</button>
+      </div>
+    </div>
+  </div>
 
   <section id="help" class="help">
     <h2 class="sec">使用说明</h2>
@@ -170,7 +192,7 @@
     <p><b>4. 等级对应</b>：1★低 · 2★关注 · 3★预警 · 4★高风险 · 5★危险（需立即介入）· 0★未评级。</p>
     <p><b>5. 数据在哪（在线版）</b>：数据存在云端 Supabase，<b>多人打开同一网址实时同步</b>。任何人改动，别人刷新即见。重要数据可用「导出看板CSV」备份到本地。</p>
     <p><b>6. 访问口令</b>：打开本页需输入管理员给的口令（默认 <code>6688</code>）。把口令告诉同事即可一起用；口令在网页源码顶部 <code>PASSCODE</code> 处可改，改完重新部署生效。</p>
-    <p><b>7. 典型用法</b>：每天点「考勤录入」记一下 → 看「预警看板」谁飘红 → <b>点星星定级</b> → 找飘红学生聊。空看板可一键「载入示例学员」体验。</p>
+    <p><b>7. 典型用法</b>：学生多时，在「学生管理」点 <b>批量导入</b>，粘贴整份名单（每行一个，可带「姓名,类型,备注」）或上传 CSV，一键导入；平时每天点「考勤录入」记一下 → 看「预警看板」谁飘红 → <b>点星星定级</b> → 找飘红学生聊。空看板也可一键「载入示例学员」体验。</p>
     <p><b>8. 外观</b>：右上角可切换「深色 / 浅色」主题，偏好会自动记住。</p>
   </section>
 </div>
@@ -357,6 +379,44 @@ document.getElementById("stuAdd").onclick=async()=>{
   document.getElementById("stuName").value="";document.getElementById("stuNote").value="";
   await loadAll();setTip("已添加 "+name);
 };
+
+/* ---------- 批量导入 ---------- */
+function parseStudents(text){
+  const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const out=[];let header=true;
+  for(const line of lines){
+    const parts=line.split(/\t|,|，/).map(s=>s.trim());
+    if(header && (parts[0]==="姓名"||parts[0].toLowerCase()==="name")){header=false;continue;}
+    header=false;
+    const name=parts[0];if(!name)continue;
+    const type=(parts[1]&&["住校","走读"].includes(parts[1]))?parts[1]:"住校";
+    out.push({name,type,note:parts[2]||"",manual_stars:0});
+  }
+  return out;
+}
+function openBulk(){document.getElementById("bulkErr").textContent="";document.getElementById("bulkCount").textContent="";document.getElementById("bulkModal").style.display="flex";}
+function closeBulk(){document.getElementById("bulkModal").style.display="none";}
+document.getElementById("bulkBtn").onclick=openBulk;
+document.getElementById("bulkClose").onclick=closeBulk;
+document.getElementById("bulkModal").addEventListener("click",e=>{if(e.target.id==="bulkModal")closeBulk();});
+document.getElementById("bulkText").addEventListener("input",()=>{
+  const n=parseStudents(document.getElementById("bulkText").value).length;
+  document.getElementById("bulkCount").textContent=n?("将导入 "+n+" 名学生"):"";
+});
+document.getElementById("bulkFile").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{document.getElementById("bulkText").value=r.result;
+    document.getElementById("bulkCount").textContent="将导入 "+parseStudents(r.result).length+" 名学生";};
+  r.readAsText(f,"utf-8");
+});
+document.getElementById("bulkDo").onclick=async()=>{
+  const list=parseStudents(document.getElementById("bulkText").value);
+  if(!list.length){document.getElementById("bulkErr").textContent="没有可导入的姓名，请检查格式";return;}
+  try{ await sbInsert("students",list); await loadAll(); closeBulk(); setTip("已批量导入 "+list.length+" 名学生"); }
+  catch(err){ document.getElementById("bulkErr").textContent="导入失败："+err.message; }
+};
+
 document.getElementById("logAdd").onclick=async()=>{
   const sid=document.getElementById("logStu").value,date=document.getElementById("logDate").value;
   if(!sid||!date){alert("请选择学生与日期");return;}
