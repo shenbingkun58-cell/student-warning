@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>学生到课预警系统</title>
+<title>学生到课预警系统（在线多人版）</title>
 <style>
   :root{
     --bg:#eef1f7; --card:#ffffff; --ink:#1f2937; --sub:#6b7280; --line:#e6e9f0;
@@ -26,6 +26,8 @@
   .theme-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:20px;padding:5px 14px;cursor:pointer;font-size:13px}
   .theme-btn:hover{background:rgba(255,255,255,.3)}
   .wrap{max-width:1100px;margin:0 auto;padding:18px 16px 70px}
+  .banner{display:none;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:12px;padding:14px 16px;margin:14px 0;font-size:13px;line-height:1.7}
+  .banner code{background:#fed7aa;padding:1px 6px;border-radius:5px;font-size:12px}
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:16px 0}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
   .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--blue)}
@@ -84,15 +86,28 @@
 <header>
   <div>
     <h1>📋 学生到课预警系统</h1>
-    <div class="tip">本地单机版 · 数据存在你的浏览器 · 双击即用</div>
+    <div class="tip">在线多人版 · 数据存云端(Supabase) · 多人实时同步</div>
   </div>
   <div class="head-right">
-    <span class="tip" id="saveTip">已自动保存</span>
+    <span class="tip" id="saveTip">连接中…</span>
+    <button class="theme-btn" id="lockBtn">🔒 锁定</button>
     <button class="theme-btn" id="themeBtn">🌙 深色</button>
   </div>
 </header>
 
+<!-- 访问口令锁 -->
+<div id="lock" class="modal">
+  <div class="box" style="max-width:380px;text-align:center">
+    <h2 class="sec">🔒 请输入访问口令</h2>
+    <p class="note-txt">本页为内部预警系统，需口令进入。口令由管理员告知。</p>
+    <input id="passInput" type="password" style="width:100%;margin:12px 0" placeholder="输入口令">
+    <button class="btn" id="passBtn" style="width:100%">进入</button>
+    <p id="passErr" style="color:var(--red);font-size:12px;margin-top:8px;min-height:16px"></p>
+  </div>
+</div>
+
 <div class="wrap">
+  <div class="banner" id="banner"></div>
   <div class="stats" id="stats"></div>
 
   <nav>
@@ -106,6 +121,7 @@
     <div class="bar">
       <h2 class="sec">预警看板（按风险分从高到低）</h2>
       <div>
+        <button class="btn ghost tiny" id="refreshBtn">↻ 刷新</button>
         <button class="btn ghost tiny" id="onlyWarn">只看预警及以上</button>
         <button class="btn ghost tiny" id="expCsv">导出看板CSV</button>
       </div>
@@ -150,16 +166,23 @@
     <h2 class="sec">使用说明</h2>
     <p><b>1. 它是干嘛的</b>：把每天谁没来、请没请假、迟不迟到、宿管/课堂有没有事记下来，系统算「风险分」作参考。</p>
     <p><b>2. 风险分怎么算</b>：未请假缺勤 ×3 ＋ 请假缺勤 ×1 ＋ 迟到 ×1.5 ＋ 夜不归宿/宿舍问题 ×4 ＋ 课堂扰乱 ×4 ＝ 风险分。</p>
-    <p><b>3. 评级主动权在你手里</b>：星级改为 <b>5 颗星</b>。看板上<b>直接点星星</b>就能给每个学生的危险等级定级（1★低 → 5★危险·需介入），系统只显示「建议星级」作参考，最终等级和颜色由你点选决定。</p>
+    <p><b>3. 评级主动权在你手里</b>：星级为 <b>5 颗星</b>。看板上<b>直接点星星</b>就能给每个学生的危险等级定级（1★低 → 5★危险·需介入），系统只显示「建议星级」作参考，最终等级和颜色由你点选决定。</p>
     <p><b>4. 等级对应</b>：1★低 · 2★关注 · 3★预警 · 4★高风险 · 5★危险（需立即介入）· 0★未评级。</p>
-    <p><b>5. 数据在哪</b>：全部存在你这台电脑的浏览器里（localStorage），不上传、不联网。换电脑/清缓存会丢，重要数据用「导出看板CSV」备份。</p>
-    <p><b>6. 典型用法</b>：每天点「考勤录入」记一下 → 看「预警看板」谁飘红 → <b>点星星定级</b> → 找飘红学生聊。已预置 5 名示例学员（含建议星级），可直接改/删。</p>
-    <p><b>7. 外观</b>：右上角可切换「深色 / 浅色」主题，偏好会自动记住。</p>
+    <p><b>5. 数据在哪（在线版）</b>：数据存在云端 Supabase，<b>多人打开同一网址实时同步</b>。任何人改动，别人刷新即见。重要数据可用「导出看板CSV」备份到本地。</p>
+    <p><b>6. 访问口令</b>：打开本页需输入管理员给的口令（默认 <code>6688</code>）。把口令告诉同事即可一起用；口令在网页源码顶部 <code>PASSCODE</code> 处可改，改完重新部署生效。</p>
+    <p><b>7. 典型用法</b>：每天点「考勤录入」记一下 → 看「预警看板」谁飘红 → <b>点星星定级</b> → 找飘红学生聊。空看板可一键「载入示例学员」体验。</p>
+    <p><b>8. 外观</b>：右上角可切换「深色 / 浅色」主题，偏好会自动记住。</p>
   </section>
 </div>
 
 <script>
-const KEY="attendance-warning-v1", THEME_KEY="attendance-warning-theme";
+/* ===================== 配置区（可改） ===================== */
+const SB_URL="https://wizxwoqupuuxkrdohdem.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenh3b3F1cHV1eGtyZG9oZGVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NDI0NjcsImV4cCI6MjEwMzIxODQ2N30.dWeQp20QLrMTBEWSSDz_pR80Kv7KCmonblMA2K7SXk4";
+const PASSCODE="6688";                 // ← 访问口令，改这里后重新部署即可
+const THEME_KEY="attendance-warning-theme";
+/* ====================================================== */
+
 const WEIGHT={unex:3,exc:1,late:1.5,dorm:4,disr:4};
 const TYPE_LABEL={unex:"未请假缺勤",exc:"请假缺勤",late:"迟到",dorm:"宿舍/夜不归宿",disr:"课堂扰乱"};
 const LEVEL=[
@@ -171,47 +194,73 @@ const LEVEL=[
   {min:5,cls:"b5",name:"危险·需介入",color:"#dc2626"}
 ];
 let state={students:[],records:[]};
-const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const H={"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"};
 
-function load(){
-  try{const s=localStorage.getItem(KEY);if(s){state=JSON.parse(s);migrate();return}}catch(e){}
-  seed();
+async function sb(path,method,body){
+  const opt={method,headers:H};
+  if(body!==undefined)opt.body=JSON.stringify(body);
+  const res=await fetch(SB_URL+"/rest/v1/"+path,opt);
+  if(!res.ok){const txt=await res.text();let msg=txt;try{msg=(JSON.parse(txt).message)||txt}catch(e){}
+    const err=new Error(msg);err.status=res.status;throw err;}
+  if(res.status===204)return null;
+  const ct=res.headers.get("content-type")||"";return ct.includes("json")?res.json():null;
 }
-function migrate(){
-  state.students.forEach(st=>{ if(st.manualStars===undefined) st.manualStars=suggestedStars(scoreOf(st.id)); });
+async function sbInsert(path,body){
+  const res=await fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign({},H,{"Prefer":"return=representation"}),body:JSON.stringify(body)});
+  if(!res.ok){const txt=await res.text();let msg=txt;try{msg=(JSON.parse(txt).message)||txt}catch(e){}throw new Error(msg);}
+  return res.json();
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));document.getElementById("saveTip").textContent="已自动保存 "+new Date().toLocaleTimeString();}catch(e){}}
+const setTip=(t)=>{const e=document.getElementById("saveTip");if(e)e.textContent=t;};
 
-function seed(){
-  const base=[
-    {name:"相卓希",type:"住校",note:"几乎每天不上课；曾凌晨1:36才回宿舍",unex:24,late:0,exc:0,dorm:2,disr:0},
-    {name:"杨瑞泽",type:"走读",note:"几乎不来；每次称前一晚喝酒起不来",unex:16,late:3,exc:0,dorm:0,disr:0},
-    {name:"王佳怡",type:"住校",note:"偶尔夜不归宿；常请假；几乎不来",unex:9,late:0,exc:12,dorm:2,disr:0},
-    {name:"刘德宇",type:"住校",note:"前两周天天迟到，之后几乎不来在睡觉",unex:10,late:8,exc:0,dorm:0,disr:0},
-    {name:"蔡明辰",type:"住校",note:"打游戏到很晚吵到投诉；上课大喊大叫",unex:20,late:0,exc:0,dorm:5,disr:6}
-  ];
-  const today=new Date();
-  base.forEach(b=>{
-    const sid=uid();
-    state.students.push({id:sid,name:b.name,type:b.type,note:b.note,manualStars:0});
-    let day=0;
-    const push=(type,c)=>{for(let i=0;i<c;i++){const d=new Date(today);d.setDate(d.getDate()-day);day+=1;
-      state.records.push({id:uid(),sid,date:d.toISOString().slice(0,10),type,note:""});}};
-    push("unex",b.unex);push("late",b.late);push("exc",b.exc);push("dorm",b.dorm);push("disr",b.disr);
-  });
-  state.students.forEach(st=>st.manualStars=suggestedStars(scoreOf(st.id)));
-  save();
+/* ---------- 加载与同步 ---------- */
+async function loadAll(){
+  try{
+    const [stu,rec]=await Promise.all([
+      sb("students?select=*&order=created_at.asc","GET"),
+      sb("records?select=*&order=date.desc","GET")
+    ]);
+    state.students=stu.map(r=>({id:r.id,name:r.name,type:r.type||"住校",note:r.note||"",manualStars:r.manual_stars||0,createdAt:r.created_at}));
+    state.records=rec.map(r=>({id:r.id,sid:r.sid,date:r.date,type:r.type,note:r.note||""}));
+    hideBanner();
+    renderAll();
+    setTip("已同步 "+new Date().toLocaleTimeString());
+  }catch(e){
+    if(e.status===404 || String(e.message).includes("does not exist") || String(e.message).includes("Could not find")){
+      showBanner();
+      setTip("数据库表未创建");
+    }else{
+      setTip("同步失败："+e.message);
+    }
+  }
 }
+function showBanner(){
+  const b=document.getElementById("banner");
+  b.style.display="block";
+  b.innerHTML='⚠ <b>数据库表还没建好</b>：请打开 Supabase 控制台 → 左侧 <b>SQL Editor</b> → 新建查询，粘贴下面这段 SQL 后点 <b>Run</b>，然后刷新本页。<br><br>'+
+    '<code>create table if not exists students(id uuid primary key default gen_random_uuid(),name text not null,type text not null default \'住校\',note text default \'\',manual_stars int not null default 0,created_at timestamptz not null default now());</code><br>'+
+    '<code>create table if not exists records(id uuid primary key default gen_random_uuid(),sid uuid not null references students(id) on delete cascade,date text not null,type text not null,note text default \'\',created_at timestamptz not null default now());</code><br>'+
+    '<code>alter table students enable row level security;alter table records enable row level security;</code><br>'+
+    '<code>create policy "allow all" on students for all using(true) with check(true);</code><br>'+
+    '<code>create policy "allow all" on records for all using(true) with check(true);</code>';
+}
+function hideBanner(){document.getElementById("banner").style.display="none";}
+
+/* ---------- 评分 / 评级 ---------- */
 function scoreOf(sid){let s=0;state.records.forEach(r=>{if(r.sid===sid)s+=WEIGHT[r.type]||0});return Math.round(s*10)/10;}
-function suggestedStars(s){ if(s<=0)return 0; if(s<5)return 1; if(s<15)return 2; if(s<30)return 3; if(s<50)return 4; return 5; }
-function levelOf(n){let lv=LEVEL[0];for(const l of LEVEL){if(n>=l.min)lv=l}return lv}
+function suggestedStars(s){if(s<=0)return 0;if(s<5)return 1;if(s<15)return 2;if(s<30)return 3;if(s<50)return 4;return 5;}
+function levelOf(n){let lv=LEVEL[0];for(const l of LEVEL){if(n>=l.min)lv=l}return lv;}
 function starRow(sid,n,color){
   let h='';
-  for(let i=1;i<=5;i++){ h+=`<span style="cursor:pointer;color:${i<=n?color:'var(--line)'}" title="设为${i}星" onclick="setStars('${sid}',${i})">★</span>`; }
+  for(let i=1;i<=5;i++){h+=`<span style="cursor:pointer;color:${i<=n?color:'var(--line)'}" title="设为${i}星" onclick="setStars('${sid}',${i})">★</span>`;}
   return h;
 }
-function setStars(sid,v){const st=state.students.find(x=>x.id===sid);if(st){st.manualStars=v;save();renderAll();}}
+function setStars(sid,v){
+  const st=state.students.find(x=>x.id===sid);if(!st)return;
+  st.manualStars=v;renderAll();                       // 乐观更新，立即响应
+  sb("students?id=eq."+sid,"PATCH",{manual_stars:v}).catch(e=>setTip("保存失败："+e.message));
+}
 
+/* ---------- 渲染 ---------- */
 function renderStats(){
   const total=state.students.length;let warn=0,high=0,danger=0;
   state.students.forEach(st=>{const n=st.manualStars||0;if(n>=3)warn++;if(n>=4)high++;if(n>=5)danger++;});
@@ -224,9 +273,12 @@ function renderStats(){
 let onlyWarn=false;
 function renderDash(){
   const body=document.getElementById("dashBody");
+  if(!state.students.length){
+    body.innerHTML='<div class="empty">暂无学生。去「学生管理」添加，或 <button class="btn tiny" onclick="seedExamples()">载入示例学员</button></div>';return;
+  }
   let list=state.students.map(st=>({st,score:scoreOf(st.id)})).sort((a,b)=>b.score-a.score);
   if(onlyWarn)list=list.filter(x=>(x.st.manualStars||0)>=3);
-  if(!list.length){body.innerHTML='<div class="empty">暂无学生，去「学生管理」添加</div>';return}
+  if(!list.length){body.innerHTML='<div class="empty">没有符合「预警及以上」的学生</div>';return;}
   body.innerHTML=list.map(({st,score})=>{
     const n=st.manualStars||0,lv=levelOf(n),sug=suggestedStars(score);
     const recs=state.records.filter(r=>r.sid===st.id).sort((a,b)=>b.date.localeCompare(a.date));
@@ -265,10 +317,10 @@ function showDetail(sid){
     <div class="bar" style="margin-top:16px"><button class="btn" onclick="this.closest('.modal').remove()">关闭</button></div>
   </div></div>`);
 }
-function delStu(sid){if(!confirm("删除该学生及其全部考勤记录？"))return;state.students=state.students.filter(s=>s.id!==sid);state.records=state.records.filter(r=>r.sid!==sid);save();renderAll();}
+async function delStu(sid){if(!confirm("删除该学生及其全部考勤记录？"))return;await sb("students?id=eq."+sid,"DELETE");await loadAll();}
 function renderStu(){
   const list=document.getElementById("stuList");
-  if(!state.students.length){list.innerHTML='<div class="empty">还没有学生</div>';return}
+  if(!state.students.length){list.innerHTML='<div class="empty">还没有学生。点下面按钮加一个，或 <button class="btn tiny" onclick="seedExamples()">载入示例学员</button></div>';return;}
   list.innerHTML='<table><thead><tr><th>姓名</th><th>类型</th><th>备注</th><th>事件数</th><th>操作</th></tr></thead><tbody>'+state.students.map(st=>{
     const c=state.records.filter(r=>r.sid===st.id).length;const lv=levelOf(st.manualStars||0);
     return `<tr><td><b>${st.name}</b></td><td>${st.type}</td><td class="note-txt">${st.note||"-"}</td><td>${c}</td>
@@ -277,11 +329,12 @@ function renderStu(){
           <button class="btn ghost tiny" onclick="delStu('${st.id}')">删</button></td></tr>`;
   }).join("")+'</tbody></table>';
 }
-function editStu(sid){const st=state.students.find(s=>s.id===sid);if(!st)return;
+async function editStu(sid){const st=state.students.find(s=>s.id===sid);if(!st)return;
   const name=prompt("姓名",st.name);if(name===null)return;
   const type=prompt("类型（住校/走读）",st.type);if(type===null)return;
   const note=prompt("备注",st.note||"");
-  st.name=name||st.name;st.type=type||st.type;st.note=note||"";save();renderAll();
+  await sb("students?id=eq."+sid,"PATCH",{name:name||st.name,type:type||st.type,note:note||""});
+  await loadAll();
 }
 function renderLog(){
   const sel=document.getElementById("logStu");
@@ -294,26 +347,24 @@ function renderLog(){
     recs.map(r=>`<tr><td>${r.date}</td><td>${nameOf(r.sid)}</td><td>${TYPE_LABEL[r.type]}</td><td class="note-txt">${r.note||"-"}</td>
       <td><button class="btn ghost tiny" onclick="delRec('${r.id}')">删</button></td></tr>`).join("")+'</tbody></table>';
 }
-function delRec(rid){state.records=state.records.filter(r=>r.id!==rid);save();renderAll();}
+async function delRec(rid){await sb("records?id=eq."+rid,"DELETE");await loadAll();}
 function renderAll(){renderStats();renderDash();renderStu();renderLog();}
 
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
-  document.querySelectorAll("section").forEach(s=>s.classList.remove("show"));
-  b.classList.add("active");document.getElementById(b.dataset.tab).classList.add("show");
-});
-document.getElementById("stuAdd").onclick=()=>{
+/* ---------- 写入操作 ---------- */
+document.getElementById("stuAdd").onclick=async()=>{
   const name=document.getElementById("stuName").value.trim();if(!name){alert("请输入姓名");return;}
-  state.students.push({id:uid(),name,type:document.getElementById("stuType").value,note:document.getElementById("stuNote").value.trim(),manualStars:0});
-  document.getElementById("stuName").value="";document.getElementById("stuNote").value="";save();renderAll();
+  await sbInsert("students",{name,type:document.getElementById("stuType").value,note:document.getElementById("stuNote").value.trim(),manual_stars:0});
+  document.getElementById("stuName").value="";document.getElementById("stuNote").value="";
+  await loadAll();setTip("已添加 "+name);
 };
-document.getElementById("logAdd").onclick=()=>{
+document.getElementById("logAdd").onclick=async()=>{
   const sid=document.getElementById("logStu").value,date=document.getElementById("logDate").value;
   if(!sid||!date){alert("请选择学生与日期");return;}
-  state.records.push({id:uid(),sid,date,type:document.getElementById("logType").value,note:document.getElementById("logNote").value.trim()});
-  document.getElementById("logNote").value="";save();renderAll();alert("已登记");
+  await sbInsert("records",{sid,date,type:document.getElementById("logType").value,note:document.getElementById("logNote").value.trim()});
+  document.getElementById("logNote").value="";await loadAll();alert("已登记");
 };
 document.getElementById("onlyWarn").onclick=()=>{onlyWarn=!onlyWarn;renderDash();};
+document.getElementById("refreshBtn").onclick=()=>loadAll();
 document.getElementById("expCsv").onclick=()=>{
   let csv="姓名,类型,风险分,手动星级,等级,备注\n";
   state.students.map(st=>({st,score:scoreOf(st.id)})).sort((a,b)=>b.score-a.score).forEach(({st,score})=>{
@@ -322,6 +373,36 @@ document.getElementById("expCsv").onclick=()=>{
   });
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download="学生预警看板.csv";a.click();
 };
+
+/* ---------- 示例数据 ---------- */
+async function seedExamples(){
+  const base=[
+    {name:"相卓希",type:"住校",note:"几乎每天不上课；曾凌晨1:36才回宿舍",unex:24,late:0,exc:0,dorm:2,disr:0},
+    {name:"杨瑞泽",type:"走读",note:"几乎不来；每次称前一晚喝酒起不来",unex:16,late:3,exc:0,dorm:0,disr:0},
+    {name:"王佳怡",type:"住校",note:"偶尔夜不归宿；常请假；几乎不来",unex:9,late:0,exc:12,dorm:2,disr:0},
+    {name:"刘德宇",type:"住校",note:"前两周天天迟到，之后几乎不来在睡觉",unex:10,late:8,exc:0,dorm:0,disr:0},
+    {name:"蔡明辰",type:"住校",note:"打游戏到很晚吵到投诉；上课大喊大叫",unex:20,late:0,exc:0,dorm:5,disr:6}
+  ];
+  const today=new Date();
+  for(const b of base){
+    const row=await sbInsert("students",{name:b.name,type:b.type,note:b.note,manual_stars:0});
+    const sid=row[0].id;
+    const recs=[];let day=0;
+    const push=(type,c)=>{for(let i=0;i<c;i++){const d=new Date(today);d.setDate(d.getDate()-day);day++;recs.push({sid,date:d.toISOString().slice(0,10),type,note:""});}};
+    push("unex",b.unex);push("late",b.late);push("exc",b.exc);push("dorm",b.dorm);push("disr",b.disr);
+    if(recs.length)await sbInsert("records",recs);
+  }
+  await loadAll();
+  for(const st of state.students){const sug=suggestedStars(scoreOf(st.id));if(!st.manualStars){await sb("students?id=eq."+st.id,"PATCH",{manual_stars:sug});}}
+  await loadAll();setTip("已载入示例学员");
+}
+
+/* ---------- 导航 / 主题 / 口令 ---------- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("show"));
+  b.classList.add("active");document.getElementById(b.dataset.tab).classList.add("show");
+});
 document.getElementById("themeBtn").onclick=()=>{
   const cur=document.documentElement.getAttribute("data-theme");
   const next=cur==="dark"?"light":"dark";
@@ -331,9 +412,23 @@ document.getElementById("themeBtn").onclick=()=>{
 };
 (function(){const t=localStorage.getItem(THEME_KEY)||"light";document.documentElement.setAttribute("data-theme",t);
   document.getElementById("themeBtn").textContent=t==="dark"?"☀️ 浅色":"🌙 深色";})();
+document.getElementById("lockBtn").onclick=()=>{localStorage.removeItem("sw-pass");location.reload();};
 
+function startApp(){
+  loadAll();
+  setInterval(()=>{ if(document.getElementById("lock").style.display==="none") loadAll(); },20000); // 每20秒自动同步
+}
+function checkPass(){
+  if(localStorage.getItem("sw-pass")===PASSCODE){document.getElementById("lock").style.display="none";startApp();}
+}
+document.getElementById("passBtn").onclick=()=>{
+  const v=document.getElementById("passInput").value;
+  if(v===PASSCODE){localStorage.setItem("sw-pass",PASSCODE);document.getElementById("lock").style.display="none";startApp();}
+  else{document.getElementById("passErr").textContent="口令错误，请向管理员索取";}
+};
+document.getElementById("passInput").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("passBtn").click();});
 document.getElementById("logDate").value=new Date().toISOString().slice(0,10);
-load();renderAll();
+checkPass();
 </script>
 </body>
 </html>
