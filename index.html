@@ -362,12 +362,40 @@ function renderLog(){
   const sel=document.getElementById("logStu");
   sel.innerHTML=state.students.map(s=>`<option value="${s.id}">${s.name}</option>`).join("")||'<option>先加学生</option>';
   const list=document.getElementById("logList");
-  const recs=[...state.records].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,40);
+  const recs=[...state.records].sort((a,b)=>b.date.localeCompare(a.date));
   if(!recs.length){list.innerHTML='<div class="empty">还没有考勤记录</div>';return}
   const nameOf=id=>(state.students.find(s=>s.id===id)||{}).name||"?";
-  list.innerHTML='<h2 class="sec" style="margin-top:18px">最近 40 条记录</h2><table><thead><tr><th>日期</th><th>学生</th><th>类型</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
-    recs.map(r=>`<tr><td>${r.date}</td><td>${nameOf(r.sid)}</td><td>${TYPE_LABEL[r.type]}</td><td class="note-txt">${r.note||"-"}</td>
+  list.innerHTML=`<div class="bar" style="margin:14px 0 6px">
+      <h2 class="sec" style="margin:0">考勤记录（共 ${recs.length} 条）</h2>
+      <div>
+        <span class="note-txt" id="recSelCount" style="margin-right:8px">已选 0</span>
+        <button class="btn danger tiny" id="recDelBtn" style="display:none" onclick="batchDelRec()">批量删除</button>
+      </div>
+    </div>
+    <table><thead><tr><th style="width:34px"><input type="checkbox" id="recAll" onchange="toggleAllRec(this.checked)"></th><th>日期</th><th>学生</th><th>类型</th><th>备注</th><th style="width:60px">操作</th></tr></thead><tbody>`+
+    recs.map(r=>`<tr><td><input type="checkbox" class="recChk" data-id="${r.id}" onchange="updateRecSel()"></td><td>${r.date}</td><td>${nameOf(r.sid)}</td><td>${TYPE_LABEL[r.type]}</td><td class="note-txt">${r.note||"-"}</td>
       <td><button class="btn ghost tiny" onclick="delRec('${r.id}')">删</button></td></tr>`).join("")+'</tbody></table>';
+}
+function updateRecSel(){
+  const ids=Array.from(document.querySelectorAll(".recChk:checked")).map(c=>c.dataset.id);
+  document.getElementById("recSelCount").textContent="已选 "+ids.length;
+  document.getElementById("recDelBtn").style.display=ids.length?"":"none";
+  const all=document.getElementById("recAll");if(all){
+    const total=document.querySelectorAll(".recChk").length;
+    all.checked=total>0 && ids.length===total; all.indeterminate=ids.length>0 && ids.length<total;
+  }
+}
+function toggleAllRec(on){
+  document.querySelectorAll(".recChk").forEach(c=>{c.checked=on;});
+  updateRecSel();
+}
+async function batchDelRec(){
+  const ids=Array.from(document.querySelectorAll(".recChk:checked")).map(c=>c.dataset.id);
+  if(!ids.length) return;
+  if(!confirm(`确定删除选中的 ${ids.length} 条记录？此操作不可撤销。`)) return;
+  const qs="id=in.("+ids.map(id=>encodeURIComponent(id)).join(",")+")";
+  try{ await sb("records?"+qs,"DELETE"); await loadAll(); setTip("已删除 "+ids.length+" 条记录"); }
+  catch(e){ alert("删除失败："+e.message); }
 }
 async function delRec(rid){await sb("records?id=eq."+rid,"DELETE");await loadAll();}
 function renderAll(){renderStats();renderDash();renderStu();renderLog();}
